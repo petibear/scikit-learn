@@ -122,6 +122,9 @@ class IsolationForest(OutlierMixin, BaseBagging):
 
         .. versionadded:: 0.21
 
+    max_depth : 'log', 'max', or int, optional (default='log')
+        TODO: add description
+
     Attributes
     ----------
     estimators_ : list of DecisionTreeClassifier
@@ -171,7 +174,8 @@ class IsolationForest(OutlierMixin, BaseBagging):
                  behaviour='deprecated',
                  random_state=None,
                  verbose=0,
-                 warm_start=False):
+                 warm_start=False,
+                 max_depth=None):
         super().__init__(
             base_estimator=ExtraTreeRegressor(
                 max_features=1,
@@ -190,6 +194,7 @@ class IsolationForest(OutlierMixin, BaseBagging):
 
         self.behaviour = behaviour
         self.contamination = contamination
+        self.max_depth = max_depth
 
     def _set_oob_score(self, X, y):
         raise NotImplementedError("OOB score not supported by iforest")
@@ -270,9 +275,28 @@ class IsolationForest(OutlierMixin, BaseBagging):
             max_samples = int(self.max_samples * X.shape[0])
 
         self.max_samples_ = max_samples
-        max_depth = int(np.ceil(np.log2(max(max_samples, 2))))
+
+        # estabilish max_depth
+
+        if (self.max_depth is None or
+                (isinstance(self.max_depth, str) and self.max_depth == "log")):
+            # if "log" or None (i.e. default behaviour)
+            # set max_depth to ceil(log_2(n)) to follow [1]
+            max_depth_ = int(np.ceil(np.log2(max(max_samples, 2))))
+        elif (isinstance(self.max_depth, str) and self.max_depth == "max"):
+            # follow [2] with fully grown iTrees
+            max_depth_ = None
+        elif isinstance(self.max_depth, numbers.Integral):
+            # follow [2] with the iTrees limited to max_depth
+            max_depth_ = self.max_depth
+        else:
+            raise ValueError('max_depth (%s)cf is not supported.'
+                             'Valid choices are: "log", "max", int, or '
+                             'None' % self.max_depth)
+
+        self.max_depth_ = max_depth_
         super()._fit(X, y, max_samples,
-                     max_depth=max_depth,
+                     max_depth=max_depth_,
                      sample_weight=sample_weight)
 
         if self.contamination == "auto":

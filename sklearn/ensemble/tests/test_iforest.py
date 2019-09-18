@@ -52,7 +52,8 @@ def test_iforest():
 
     grid = ParameterGrid({"n_estimators": [3],
                           "max_samples": [0.5, 1.0, 3],
-                          "bootstrap": [True, False]})
+                          "bootstrap": [True, False],
+                          "max_depth": [None, "log", "max", 2]})
 
     with ignore_warnings():
         for params in grid:
